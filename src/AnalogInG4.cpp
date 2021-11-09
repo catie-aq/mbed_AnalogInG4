@@ -194,5 +194,32 @@ void AnalogInG4::startADC() {
 }
 
 uint16_t AnalogInG4::read_u16() {
-    return _adc_dma_buffer[0];
+
+    uint32_t adc_sum = 0;
+
+    for (int i = 0; i < NUMBER_OF_DMA_READINGS; i++)
+        adc_sum += _adc_dma_buffer[i];
+
+    return (adc_sum / NUMBER_OF_DMA_READINGS) + _current_offset;
+}
+
+void AnalogInG4::setCurrentOffset() {
+
+    uint32_t offset_sum = 0;
+    uint16_t number_of_reading = 10;
+
+    // Let DMA fill the buffer at least one time
+    ThisThread::sleep_for(100ms);
+
+    for (int i = 0; i < number_of_reading; i++) {
+        offset_sum += read_u16();
+        ThisThread::sleep_for(50ms);
+    }
+
+    _current_offset = 2048 - (offset_sum / number_of_reading);
+}
+
+int16_t AnalogInG4::getCurrentMilliAmps() {
+
+    return int16_t((((((float(read_u16()) / 4096.0f) * 3.3f)) - 1.65f) * (20.625f / 3.3f)) * 1000.0f);
 }

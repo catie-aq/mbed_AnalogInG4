@@ -19,7 +19,7 @@
 #ifndef ANALOGING4_H
 #define ANALOGING4_H
 
-#define NUMBER_OF_DMA_READINGS  10
+#define NUMBER_OF_DMA_READINGS  50
 
 #include <mbed.h>
 
@@ -43,6 +43,10 @@ public:
 
     uint16_t read_u16();
 
+    void setCurrentOffset();
+
+    int16_t getCurrentMilliAmps();
+
 private:
 
     static bool _adc_hal_clk_enable;
@@ -57,7 +61,8 @@ private:
     GPIO_TypeDef *_gpio_port;
     uint32_t _gpio_pin;
 
-    uint16_t _adc_dma_buffer[NUMBER_OF_DMA_READINGS]={0};
+    uint16_t _adc_dma_buffer[NUMBER_OF_DMA_READINGS] = {0};
+    uint16_t _current_offset = 0;
 
     void initADC();
 
