@@ -20,6 +20,7 @@
 
 // Define static members, initialized only one time
 bool AnalogInG4::_adc_hal_clk_enable = false;
+bool AnalogInG4::_dma_hal_clk_enable = false;
 
 
 AnalogInG4::AnalogInG4(PinName pin) :
@@ -32,24 +33,36 @@ AnalogInG4::AnalogInG4(PinName pin) :
         case ADC_IN1: // PA0 (HAL: ADC1 IN1)
             _instance = ADC1;
             _channel = ADC_CHANNEL_1;
+            _multimode = true;
+            _dma_instance = DMA1_Channel1;
+            _dma_request = DMA_REQUEST_ADC1;
             _gpio_port = GPIOA;
             _gpio_pin = GPIO_PIN_0;
             break;
         case ADC_IN2: // PA7 (HAL: ADC2 IN4)
             _instance = ADC2;
             _channel = ADC_CHANNEL_4;
+            _multimode = false;
+            _dma_instance = DMA1_Channel2;
+            _dma_request = DMA_REQUEST_ADC2;
             _gpio_port = GPIOA;
             _gpio_pin = GPIO_PIN_7;
             break;
         case ADC_IN3: // PB1 (HAL: ADC3 IN1)
             _instance = ADC3;
             _channel = ADC_CHANNEL_1;
+            _multimode = true;
+            _dma_instance = DMA1_Channel3;
+            _dma_request = DMA_REQUEST_ADC3;
             _gpio_port = GPIOB;
             _gpio_pin = GPIO_PIN_1;
             break;
         case ADC_IN4: // PE8 (HAL: AD4 IN6)
             _instance = ADC4;
             _channel = ADC_CHANNEL_6;
+            _multimode = false;
+            _dma_instance = DMA1_Channel4;
+            _dma_request = DMA_REQUEST_ADC4;
             _gpio_port = GPIOE;
             _gpio_pin = GPIO_PIN_8;
             break;
@@ -77,14 +90,13 @@ void AnalogInG4::initADC() {
 
 void AnalogInG4::setupADC() {
 
-    // Turn off all ADC clock if not already done
+    // Turn on all ADC clock if not already done
     if (!_adc_hal_clk_enable) {
         __HAL_RCC_ADC12_CLK_ENABLE();
         __HAL_RCC_ADC345_CLK_ENABLE();
         _adc_hal_clk_enable = true;
     }
 
-    ADC_MultiModeTypeDef multimode = {0};
     ADC_ChannelConfTypeDef sConfig = {0};
 
     /** Common config
@@ -108,15 +120,21 @@ void AnalogInG4::setupADC() {
     if (HAL_ADC_Init(&_hadc) != HAL_OK) {
         printf("Error while HAL init ADC.\n");
     }
-    /** Configure the ADC multi-mode
-    */
-    multimode.Mode = ADC_MODE_INDEPENDENT;
-    if (HAL_ADCEx_MultiModeConfigChannel(&_hadc, &multimode) != HAL_OK) {
-        printf("Error while setting ADC independent mode.\n");
+
+    // ADC1 and ADC3 are the only one with multimode configuration
+    if (_multimode) {
+        ADC_MultiModeTypeDef multimode = {0};
+        /** Configure the ADC multi-mode
+            */
+        multimode.Mode = ADC_MODE_INDEPENDENT;
+        if (HAL_ADCEx_MultiModeConfigChannel(&_hadc, &multimode) != HAL_OK) {
+            printf("Error while setting ADC independent mode.\n");
+        }
     }
+
     /** Configure Regular Channel
     */
-    sConfig.Channel = ADC_CHANNEL_1;
+    sConfig.Channel = _channel;
     sConfig.Rank = ADC_REGULAR_RANK_1;
     sConfig.SamplingTime = ADC_SAMPLETIME_2CYCLES_5;
     sConfig.SingleDiff = ADC_SINGLE_ENDED;
@@ -131,13 +149,16 @@ void AnalogInG4::setupADC() {
 void AnalogInG4::setupDMA() {
 
     // DMA controller clock enable
-    __HAL_RCC_DMAMUX1_CLK_ENABLE();
-    __HAL_RCC_DMA1_CLK_ENABLE();
+    if(!_dma_hal_clk_enable){
+        __HAL_RCC_DMAMUX1_CLK_ENABLE();
+        __HAL_RCC_DMA1_CLK_ENABLE();
+        _dma_hal_clk_enable = true;
+    }
 
     /* ADC1 DMA Init */
     /* ADC1 Init */
-    _hdma_adc.Instance = DMA1_Channel1;
-    _hdma_adc.Init.Request = DMA_REQUEST_ADC1;
+    _hdma_adc.Instance = _dma_instance;
+    _hdma_adc.Init.Request = _dma_request;
     _hdma_adc.Init.Direction = DMA_PERIPH_TO_MEMORY;
     _hdma_adc.Init.PeriphInc = DMA_PINC_DISABLE;
     _hdma_adc.Init.MemInc = DMA_MINC_ENABLE;
@@ -221,5 +242,6 @@ void AnalogInG4::setCurrentOffset() {
 
 int16_t AnalogInG4::getCurrentMilliAmps() {
 
-    return int16_t((((((float(read_u16()) / 4096.0f) * 3.3f)) - 1.65f) * (20.625f / 3.3f)) * 1000.0f);
+//    return int16_t((((((float(read_u16()) / 4096.0f) * 3.3f)) - 1.65f) * (20.625f / 3.3f)) * 1000.0f);
+    return int16_t((50354 * read_u16() - 103120000)/10000); //without using float
 }

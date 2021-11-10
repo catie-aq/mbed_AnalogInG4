@@ -43,6 +43,7 @@ public:
 
     uint16_t read_u16();
 
+    // To be called AFTER STARTING PWM, because we need ADC to be triggered by HRTIM
     void setCurrentOffset();
 
     int16_t getCurrentMilliAmps();
@@ -50,6 +51,7 @@ public:
 private:
 
     static bool _adc_hal_clk_enable;
+    static bool _dma_hal_clk_enable;
 
     PinName _pin;
     ADC_HandleTypeDef _hadc;
@@ -57,11 +59,15 @@ private:
 
     ADC_TypeDef *_instance;
     uint32_t _channel;
+    bool _multimode;
+
+    DMA_Channel_TypeDef  *_dma_instance;
+    uint32_t _dma_request;
 
     GPIO_TypeDef *_gpio_port;
     uint32_t _gpio_pin;
 
-    uint16_t _adc_dma_buffer[NUMBER_OF_DMA_READINGS] = {0};
+    volatile uint16_t _adc_dma_buffer[NUMBER_OF_DMA_READINGS] = {0};
     uint16_t _current_offset = 0;
 
     void initADC();
