@@ -32,20 +32,32 @@ class AnalogInG4 {
 
 public:
 
-    /*!
-     *  Default AnalogInG4 contructor
+    /** Create an AnalogInG4, connected to the specified pin.
+     *  This will setup a DMA to write value from ADC in a buffer at all time.
+     *  The ADC is configured to be triggered from the first PwmOutG4 declared.
      *
-     *  \param pin Pin used for ADC input
+     *
+     * @param pin AnalogInG4 pin to connect to.
+     *
      */
     AnalogInG4(PinName pin);
 
     ~AnalogInG4();
 
+    /** Read the input voltage, represented as an unsigned short in the range [0x0, 0x1000]
+     *
+     * THE CORESPONDING PwmOutG4 OBJECT MUST BE START BEFORE READING THE ADC
+     * (Because if not, the ADC will never be triggered by the HRTIM, and the corresponding DMA will not work)
+     *
+     * @returns
+     *   16-bit unsigned short representing the current input voltage
+     */
     uint16_t read_u16();
 
-    // To be called AFTER STARTING PWM, because we need ADC to be triggered by HRTIM
+    // Custom function, not MBED related, to set the offset at start (no load must be plugged on the power board)
     void setCurrentOffset();
 
+    // Custom function, to convert [V] to [mA] using shunt amplifier on Zest_Actuator_HalfBridges.
     int16_t getCurrentMilliAmps();
 
 private:
@@ -61,7 +73,7 @@ private:
     uint32_t _channel;
     bool _multimode;
 
-    DMA_Channel_TypeDef  *_dma_instance;
+    DMA_Channel_TypeDef *_dma_instance;
     uint32_t _dma_request;
 
     GPIO_TypeDef *_gpio_port;
